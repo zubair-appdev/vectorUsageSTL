@@ -10,7 +10,8 @@
 #include <array>
 
 #include <algorithm>
-#include <numeric>
+#include <numeric> //lcm, gcd
+#include <functional> //plus , greater
 
 #include <set>
 
@@ -23,9 +24,87 @@
 #include <variant>
 #include <any>
 
+#include <memory>
+#include <future>
+#include <thread>
+#include <mutex>
+
+std::mutex mtx;
+std::mutex coutMtx;
+
 using namespace std;
 
 optional<string> findUser(int);
+
+void safePrintingStr(const string& msg)
+{
+    lock_guard<mutex> lock(coutMtx);
+    cout<<msg<<endl;
+}
+
+int task1(int c);
+
+int heavyCounter = 0;
+
+int heavyWork(int x)
+{
+    this_thread::sleep_for(chrono::seconds(5));
+    return x*x;
+}
+
+void printFunc();
+int printFunc2();
+
+struct foo
+{
+    int k = 100;
+    foo()
+    {
+        cout<<"foo constructor created"<<endl;
+    }
+
+    ~foo()
+    {
+        cout<<"foo destructor called"<<endl;
+    }
+};
+
+struct sharing
+{
+    int k = 107;
+    sharing()
+    {
+        cout<<"sharing constructor created"<<endl;
+    }
+
+    ~sharing()
+    {
+        cout<<"sharing destructor called"<<endl;
+    }
+};
+
+void normalFunc(int x,string name)
+{
+    cout<<name<<x<<" :age"<<endl;
+}
+
+
+struct Counter
+{
+    int count = 0;
+    void operator() (int x)
+    {
+        if(x%2 == 0) count++;
+    }
+};
+
+struct square1
+{
+    int operator() (int x)
+    {
+        return x*x;
+    }
+};
 
 namespace zubair
 {
@@ -771,6 +850,130 @@ int main()
     }
 
 
+    // Functors and for_each()
+    vector<int> v10 = {1,2,3,4,5,6};
+    Counter c = for_each(v10.begin(),v10.end(),Counter{});
+    cout<<c.count<<" : Even nums count"<<endl;
+
+    square1 s10;
+    cout<<s10(5)<<" : square"<<endl;
+
+    vector<int> p(10,s10(5));
+    printVectorRef(p);
+
+    //Brief intro about functional
+
+    plus<int> add;
+    cout<<add(10,20)<<" :plus struct"<<endl;
+
+    greater<int> cmp;
+    cout<<cmp(71,70)<<" :greater struct"<<endl;
+
+
+    function<void(int,string)> func;
+    func = normalFunc;
+    func(24,"Zubair");
+
+    auto another = bind(normalFunc,25,placeholders::_1);
+    another("Zubair");
+
+    //Smart Pointers
+    foo *obj = new foo(); // OR auto obj = new foo;
+    delete obj;
+
+    unique_ptr<foo> obj4 = make_unique<foo>();
+
+
+    {
+        cout<<"Inside scope"<<endl;
+        cout<<obj->k<<endl;
+        cout<<obj4->k<<endl;
+    }
+
+    //auto obj5 = obj4; //Error in unique there is only move not copy
+    auto obj5 = std::move(obj4);
+
+    shared_ptr<sharing> sObj = make_shared<sharing>();
+
+    {
+        cout<<"Inside sharing scope"<<endl;
+        auto sObj2 = sObj;
+        cout<<sObj2->k<<endl; //sObj2 is owner of k
+        cout<<"Does it creating twice"<<endl;
+    }
+
+    cout<<sObj->k<<endl; //sObj is also owner of k they will destroy accordingly
+
+
+    //# MULTITHREADING
+    future<int> result = async(launch::async,heavyWork,5);
+
+    vector<string> strf(10,"Main Thread Running ..");
+
+    for(const auto& stringName : strf)
+    {
+        cout<<stringName<<endl;
+    }
+
+
+    while (result.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready) { //Why should i wait here when i go down and print go go pow
+        cout << "Still working..." << endl;
+    }
+
+
+    cout << result.get() << endl;
+    cout << "Go go ... Power Rangers" << endl;
+
+    //# Continue MULTITHREADING With thread and detach but this way can't guarantee if main returns your threads get killed
+
+    future<int> result2 = async(launch::async,heavyWork,2);
+
+    thread([&result2]() mutable {
+        cout<<result2.get()<<" :we are getting 2sec heavywork"<<endl;
+    }).detach();
+
+
+    cout<<"Shinzo Sasageyo ..."<<endl;
+
+    //# this method prevents sudden main returning watcher.join() ----------------------- OG METHOD
+
+    future<int> result3 = async(launch::async,heavyWork,3);
+
+    thread watcher  ([&result3]() mutable {
+        cout<<result3.get()<<" :we are getting 3sec heavywork"<<endl;
+    });
+
+
+    cout<<"Shinzo Sasageyo part 2 ..."<<endl;
+
+    watcher.join();
+
+    //Mutex real usage
+    future<int> thread1 = async(launch::async,task1,1'00'000);
+    future<int> thread2 = async(launch::async,task1,1'00'000);
+
+
+    cout<<thread1.get()<<" :thread1.get()"<<endl;
+    cout<<thread2.get()<<" :thread2.get()"<<endl;
+
+    cout<<heavyCounter<<" :heavyCounter"<<endl;
+
+    //QTimer like structure
+
+    thread printMyNameEverySec(printFunc);
+
+    printMyNameEverySec.join();
+
+    future<int> result100 = async(launch::async,printFunc2);
+
+    thread watcher2 ([&result100](){
+        cout<<result100.get()<<" : result100.get()"<<endl;
+    });
+
+
+    cout<<"Done Printing"<<endl;
+    watcher2.join();
+
     return 0;
 }
 
@@ -782,4 +985,37 @@ optional<string> findUser(int num)
     }
     return nullopt;
 }
+
+int task1(int c)
+{
+    for(int i=0;i<c;i++)
+    {
+        lock_guard<mutex> lock(mtx);
+        heavyCounter++;
+    }
+    return 999;
+}
+
+void printFunc()
+{
+    for(int i=0; i<20; i++)
+    {
+        safePrintingStr("Shaik Zubair ahmad");
+        this_thread::sleep_for(100ms);
+    }
+}
+
+int printFunc2()
+{
+    for(int i=0; i<20; i++)
+    {
+        safePrintingStr("Shaik Zubair ahmad future");
+        this_thread::sleep_for(100ms);
+    }
+
+    return 1001;
+}
+
+
+
 
