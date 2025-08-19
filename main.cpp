@@ -56,7 +56,7 @@ int printFunc2();
 
 struct foo
 {
-  
+
     int k = 9999;
     foo()
     {
@@ -1007,6 +1007,7 @@ void printFunc()
 
 int printFunc2()
 {
+
     for(int i=0; i<16; i++)
     {
         safePrintingStr("Shaik Zubair ahmad future");
