@@ -56,7 +56,7 @@ int printFunc2();
 
 struct foo
 {
-    int k = 100;
+    int k = 9999;
     foo()
     {
         cout<<"foo constructor created"<<endl;
