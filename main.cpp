@@ -1007,7 +1007,7 @@ void printFunc()
 
 int printFunc2()
 {
-    for(int i=0; i<30; i++)
+    for(int i=0; i<15; i++)
     {
         safePrintingStr("Shaik Zubair ahmad future");
         this_thread::sleep_for(100ms);
